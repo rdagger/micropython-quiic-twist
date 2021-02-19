@@ -4,7 +4,7 @@ from machine import I2C
 
 
 class Encoder(object):
-    """I2C interace for Spark Fun Quiic Twist RGB ecnoder."""
+    """I2C interace for Spark Fun Quiic Twist RGB encoder."""
 
     # Command constants
     TWIST_ID = const(0x00)
@@ -109,23 +109,39 @@ class Encoder(object):
         """
         return self.read_word(self.TWIST_LIMIT)
 
-    def get_time_since_last_move(self):
-        """Returns the time since last encoder movement.
+    def get_time_since_last_move(self, clear=False):
+        """Returns the number of milliseconds since the last encoder movement
 
+        Args:
+            clear (bool): True = clear value (False default)
         Returns:
-            int: Milliseconds (maximum 65,535 then rolls over)
+            int: milliseconds (maximum 65,535 then rolls over)
         """
-        return self.read_word(self.TWIST_LAST_ENCODER_EVENT)
+        time_elapsed = self.read_word(self.TWIST_LAST_ENCODER_EVENT)
 
-    def get_time_since_last_press(self):
-        """Returns the time since last button press.
+        if clear:
+            self.write_word(self.TWIST_LAST_ENCODER_EVENT, 0)
 
+        return time_elapsed
+
+    def get_time_since_last_press(self, clear=False):
+        """Returns the number of milliseconds since the last button event.
+
+        Args:
+            clear (bool): True = clear value (default)
         Returns:
-            int: Milliseconds (maximum 65,535 then rolls over)
-        Note: Not compatible with interrupts which requires
-              button status bits to be reset (clearing timer)
+            int: milliseconds (maximum 65,535 then rolls over)
+        Note: 
+            Not compatible with interrupts which requires
+            button status bits to be reset (clearing timer)
         """
-        return self.read_word(self.TWIST_LAST_BUTTON_EVENT)
+        time_elapsed = self.read_word(self.TWIST_LAST_BUTTON_EVENT)
+
+        # Clear the current value if requested
+        if clear:
+            self.write_ind(self.TWIST_LAST_BUTTON_EVENT, 0)
+
+        return time_elapsed
 
     def get_version(self):
         """Returns firmware version number.
@@ -193,7 +209,7 @@ class Encoder(object):
         """Sets the relation between each color and the twisting of the knob.
             Connect the LED so it changes with each encoder tick.
             Negative numbers are allowed.
-            (so LED gets brighter the more you turn the encoder down)
+            (so LED can vary automatically while encoder is turned)
             red (int): Red component
             green (int): Green component
             blue (int): Blue component
@@ -233,37 +249,6 @@ class Encoder(object):
             steps (int): The value to set the limit (0=disabled).
         """
         self.write_word(self.TWIST_LIMIT, steps)
-
-    def since_last_movement(self, clear=True):
-        """Returns the number of milliseconds since the last encoder movement
-
-        Args:
-            clear (bool): True = clear value (default)
-        Returns:
-            int: milliseconds
-        """
-        time_elapsed = self.read_word(self.TWIST_LAST_ENCODER_EVENT)
-
-        if clear:
-            self.write_word(self.TWIST_LAST_ENCODER_EVENT, 0)
-
-        return time_elapsed
-
-    def since_last_press(self, clear=True):
-        """Returns the number of milliseconds since the last button event.
-
-        Args:
-            clear (bool): True = clear value (default)
-        Returns:
-            int: milliseconds
-        """
-        time_elapsed = self.read_word(self.TWIST_LAST_BUTTON_EVENT)
-
-        # Clear the current value if requested
-        if clear:
-            self.write_ind(self.TWIST_LAST_BUTTON_EVENT, 0)
-
-        return time_elapsed
 
     def read_byte(self, cmd):
         """Read byte from encoder.
