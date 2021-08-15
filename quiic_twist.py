@@ -1,6 +1,5 @@
 """MicroPython Quiic Twist encoder I2C driver."""
-from micropython import const
-from machine import I2C
+from micropython import const  # type: ignore
 
 
 class Encoder(object):
@@ -31,16 +30,15 @@ class Encoder(object):
     ENABLE_INTERRUPT_BUTTON = const(1)
     ENABLE_INTERRUPT_ENCODER = const(0)
 
-    def __init__(self, scl, sda, address=0x3F):
+    def __init__(self, i2c, address=0x3F):
         """Constructor for encoder.
 
         Args:
-            scl (Class Pin):  Serial clock pin
-            sda (Class Pin):  Serial data pin
+            i2c (class): I2C bus
             address (int):  Encoder I2C address
         """
         self.address = address
-        self.i2c = I2C(scl=scl, sda=sda, freq=400000)
+        self.i2c = i2c
         self.reset_count()
         self.reset_status()
         self.reset_interrupts()
@@ -71,7 +69,13 @@ class Encoder(object):
         return [red, green, blue]
 
     def get_count(self):
-        """Returns the number of indents the user has twisted the knob."""
+        """Returns the number of indents the user has twisted the knob.
+
+        Notes:
+            Looks like there's a bug in the firmware when turning the encoder
+            counter-clockwise from the zero position.  It retuns a value that
+            is 1 too high.
+        """
         return self.read_word(self.TWIST_COUNT)
 
     def get_diff(self, clear=False):
@@ -131,7 +135,7 @@ class Encoder(object):
             clear (bool): True = clear value (default)
         Returns:
             int: milliseconds (maximum 65,535 then rolls over)
-        Note: 
+        Note:
             Not compatible with interrupts which requires
             button status bits to be reset (clearing timer)
         """
@@ -218,6 +222,14 @@ class Encoder(object):
             green.to_bytes(2, 'little', True) + \
             blue.to_bytes(2, 'little', True)
         self.write_bytes(self.TWIST_CONNECT_RED, colors)
+
+    def set_count(self, count):
+        """
+            Set the encoder count to a specific amount.
+        Args:
+            count (int): Amount to set encoder count.
+        """
+        self.write_word(self.TWIST_COUNT, count)
 
     def set_interrupts(self, button, encoder):
         """Enable or disable interrupts for button and encoder.

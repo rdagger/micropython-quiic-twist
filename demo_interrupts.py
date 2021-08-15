@@ -8,10 +8,24 @@ Notes:
 """
 from time import sleep
 from random import randint
-from machine import idle, Pin
+from machine import I2C, idle, Pin  # type: ignore
 from quiic_twist import Encoder
 
-encoder = Encoder(scl=Pin(22), sda=Pin(21))
+"""
+ESP32 has default pins for the hardware I2C buses, but you can use other pins.
+It is not necessary to specify the pins if you use the defaults:
+I2C Bus | SCL | SDA |
+   # 0  | 18  | 19  |
+   # 1  | 25  | 26  |
+Raspberry Pi Pico does not have defaults. Pins must be specified from:
+I2C Bus # 0-SDA -> GPO/GP4/GP8/GPl2/GP16/GP20
+I2C Bus # 0-SCL -> GP1/GP5/GP9/GPl3/GP17/GP21
+I2C Bus # 1-SDA -> GP2/GP6/GP10/GP14/GP18/GP26
+I2C Bus # 1-SCL -> GP3/GP7/GP11/GP15/GP19/GP27
+"""
+i2c = I2C(1, freq=400000, scl=Pin(3), sda=Pin(2))  # Pico I2C bus 1
+encoder = Encoder(i2c)
+
 encoder.set_interrupts(True, True)
 print("Interrupt timeout: {}ms".format(encoder.get_int_timeout()))
 
@@ -43,7 +57,7 @@ def int_press(pin):
 def test():
     """Test code."""
 
-    int_pin = Pin(35, Pin.IN, pull=None)
+    int_pin = Pin(18, Pin.IN, pull=None)
     int_pin.irq(trigger=int_pin.IRQ_FALLING,
                 handler=int_press)
 
